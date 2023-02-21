@@ -79,6 +79,8 @@ local function next_hl_grp()
   return HL_grps[last_hl_grp][1] -- return string name of the group
 end
 
+-- Mapping word to hl_grp. key = "word", Value = hl_grp
+local Words_hlgrps = {}
 -- Register all marked words in the hash table. Key = "word", Value = match ID
 local Words_register = {}
 
@@ -89,12 +91,13 @@ end
 -- Register new word to the word register
 -- w        - word to register
 -- new_m_id - new match ID (used to clear match)
-local function wreg_register(w, new_m_id)
+local function wreg_register(w, new_m_id, hl_grp)
   local m_id = Words_register[w]
   if m_id ~= nil then
     print("HiMyWords: BUG: word already registered")
   end
   Words_register[w] = new_m_id
+  Words_hlgrps[w] = hl_grp
 end
 
 local function wreg_unregister(w)
@@ -148,9 +151,9 @@ local function get_word(line, start_i)
   return word_start, string.sub(line, word_start, word_end)
 end
 
-local function highlight_all_lines(w, hl_grp)
+local function highlight_all_lines(w, hl_grp, m_id)
   -- TODO: run in schedule?
-  return vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>")
+  return vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, m_id)
 end
 
 local function highlight_word_under_cursor()
@@ -163,11 +166,19 @@ local function highlight_word_under_cursor()
   end
   local m_id = wreg_is_registered(w)
   if m_id == nil then
-    m_id = highlight_all_lines(w, next_hl_grp())
-    wreg_register(w, m_id)
+    local hl_grp = next_hl_grp()
+    m_id = highlight_all_lines(w, hl_grp, -1)
+    wreg_register(w, m_id, hl_grp)
+    -- TODO: introduce settings:
+    vim.fn.setreg("/", w)
   else
     vim.fn.matchdelete(m_id)
     wreg_unregister(w)
+    -- TODO: introduce settings:
+    local sw = vim.fn.getreg("/")
+    if w == sw then
+      vim.fn.setreg("/", "")
+    end
   end
 end
 
@@ -197,5 +208,18 @@ end
 
 -- TODO: move to setup()
 setHLGroups()
+
+-- Highlights new windows
+vim.api.nvim_create_autocmd("WinNew", {
+  desc = "HiMyWords highlights all registered words",
+  group = vim.api.nvim_create_augroup("HiMyWordsHiRegitstered", { clear = true }),
+  callback = function()
+    for w, hlgrp in pairs(Words_hlgrps) do
+      --print("w:", w)
+      local m_id = Words_register[w]
+      highlight_all_lines(w, hlgrp, m_id)
+    end
+  end,
+})
 
 return M
