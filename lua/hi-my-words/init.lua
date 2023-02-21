@@ -56,6 +56,15 @@ local function setHLGroups()
   end
 end
 
+-- Some coloroschemes clear highlights. Updates the plugin's highlighs if colorscheme was loaded.
+vim.api.nvim_create_autocmd("ColorScheme", {
+  desc = "Re-apply HiMyWords highlights after changing colorschemes",
+  group = vim.api.nvim_create_augroup("HiMyWordsHiReload", { clear = true }),
+  callback = function()
+    setHLGroups()
+  end,
+})
+
 local Current_hl_grp = 1
 
 -- Choose next highlight group.
