@@ -102,10 +102,12 @@ end
 
 local function wreg_unregister(w)
   Words_register[w] = nil
+  Words_hlgrps[w] = nil
 end
 
 local function wreg_clear()
   Words_register = {}
+  Words_hlgrps = {}
 end
 
 -- return true if character is NOT alphanumeric and NOT _
@@ -151,9 +153,27 @@ local function get_word(line, start_i)
   return word_start, string.sub(line, word_start, word_end)
 end
 
-local function highlight_all_lines(w, hl_grp, m_id)
+local function matchadd_all_windows(w, hl_grp)
   -- TODO: run in schedule?
-  return vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, m_id)
+  local new_m_id = vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, -1)
+  local cur_win_id = vim.api.nvim_tabpage_get_win(0)
+  for _, w_id in ipairs(api.nvim_list_wins()) do
+    if w_id ~= cur_win_id then
+      api.nvim_win_call(w_id, function()
+        vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, new_m_id)
+      end)
+    end
+  end
+  return new_m_id
+end
+
+local function matchdel_all_windows(m_id)
+  -- TODO: run in schedule?
+  for _, w_id in ipairs(api.nvim_list_wins()) do
+    api.nvim_win_call(w_id, function()
+      vim.fn.matchdelete(m_id)
+    end)
+  end
 end
 
 local function highlight_word_under_cursor()
@@ -167,16 +187,16 @@ local function highlight_word_under_cursor()
   local m_id = wreg_is_registered(w)
   if m_id == nil then
     local hl_grp = next_hl_grp()
-    m_id = highlight_all_lines(w, hl_grp, -1)
+    m_id = matchadd_all_windows(w, hl_grp)
     wreg_register(w, m_id, hl_grp)
     -- TODO: introduce settings:
-    vim.fn.setreg("/", w)
+    vim.fn.setreg("/", "\\<" .. w .. "\\>")
   else
-    vim.fn.matchdelete(m_id)
+    matchdel_all_windows(m_id)
     wreg_unregister(w)
     -- TODO: introduce settings:
     local sw = vim.fn.getreg("/")
-    if w == sw then
+    if w == string.sub(sw, 3, -3) then
       vim.fn.setreg("/", "")
     end
   end
@@ -184,7 +204,11 @@ end
 
 local function clear_all_highlights()
   wreg_clear()
-  vim.fn.clearmatches()
+  for _, w_id in ipairs(api.nvim_list_wins()) do
+    api.nvim_win_call(w_id, function()
+      vim.fn.clearmatches()
+    end)
+  end
 end
 
 vim.api.nvim_create_user_command("HiMyWordsToggle", function()
@@ -214,10 +238,9 @@ vim.api.nvim_create_autocmd("WinNew", {
   desc = "HiMyWords highlights all registered words",
   group = vim.api.nvim_create_augroup("HiMyWordsHiRegitstered", { clear = true }),
   callback = function()
-    for w, hlgrp in pairs(Words_hlgrps) do
-      --print("w:", w)
+    for w, hl_grp in pairs(Words_hlgrps) do
       local m_id = Words_register[w]
-      highlight_all_lines(w, hlgrp, m_id)
+      vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, m_id)
     end
   end,
 })
