@@ -56,9 +56,9 @@ local function setHLGroups()
   end
 end
 
--- Some coloroschemes clear highlights. Updates the plugin's highlighs if colorscheme was loaded.
+-- Some color-schemes clear highlights. Updates the plugin's highlights if a color-scheme was loaded.
 vim.api.nvim_create_autocmd("ColorScheme", {
-  desc = "Re-apply HiMyWords highlights after changing colorschemes",
+  desc = "Re-apply HiMyWords highlights after changing color-schemes",
   group = vim.api.nvim_create_augroup("HiMyWordsHiReload", { clear = true }),
   callback = function()
     setHLGroups()
@@ -108,6 +108,7 @@ end
 local function wreg_clear()
   Words_register = {}
   Words_hlgrps = {}
+  Current_hl_grp = 1
 end
 
 -- return true if character is NOT alphanumeric and NOT _
@@ -125,7 +126,7 @@ end
 -- Find word around character line[start_i] in the line
 -- Returns:
 --   0 if no word was found (empty line, blank char)
---   "word" - fond word at character line[start_i]
+--   "word" - found word at character line[start_i]
 local function get_word(line, start_i)
   local line_len = #line
   if line_len == 0 or not_part_of_word(ch(line, start_i)) then

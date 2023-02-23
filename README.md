@@ -1,13 +1,27 @@
 # hi-my-words.nvim
-HiMyWords is a Neovim plugin that helps to focus on (key)words.
+HiMyWords is a [Neovim](https://neovim.io/) plugin that helps to focus on (key)words.
 
-## Commands
+See [demo](https://github.com/dvoytik/hi-my-words.nvim/wiki#demo).
+
+## ⚙️ Functionality
 The plugin automatically installs the following commands:
- * `HiMyWordsToggle` - find the word under cursor and highlights all instances. Update the search
-                     register, so `n` and `N` will work as expected. Repeat the command to remove
-                     the highlight under the cursor. You can cycle throguh available highlights
-                     colors by repeating this command twice.
+ * `HiMyWordsToggle` - this command finds the word under cursor and highlights all its instances.
+                       The search register will be updated, so `n` and `N` search commands will
+                       work as expected. To remove the highlight under the cursor, execute this
+                       command again. You can cycle throguh available highlight colors by repeating 
+                       this command (execute twice for pick next color).
  * `HiMyWordsClear` - clear all highlights.
 
-## Limitations
- * Doesn't update other windows on removing highlights with `HiMyWordsToggle`.
+## 📦 Installation
+
+- [packer.nvim](https://github.com/wbthomason/packer.nvim)
+```lua
+use "dvoytik/hi-my-words.nvim"
+```
+
+**Tip**: set up a convinient mappin in your config, for example:
+```lua
+vim.api.nvim_set_keymap("n", "<Space>m", ":HiMyWordsToggle<CR>", { noremap = true })
+```
+
+## Limitation
