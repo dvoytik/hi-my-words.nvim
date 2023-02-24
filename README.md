@@ -5,11 +5,11 @@ See [demo](https://github.com/dvoytik/hi-my-words.nvim/wiki#demo).
 
 ## ⚙️ Functionality
 The plugin automatically installs the following commands:
- * `HiMyWordsToggle` - this command finds the word under cursor and highlights all its instances.
-                       The search register will be updated, so `n` and `N` search commands will
-                       work as expected. To remove the highlight under the cursor, execute this
-                       command again. You can cycle throguh available highlight colors by repeating 
-                       this command (execute twice for pick next color).
+ * `HiMyWordsToggle` - this command detects a word under cursor and highlights all its
+                       instances in all windows. The search register is updated, so `n` and `N`
+                       search commands work as expected. To remove the highlight under the cursor,
+                       execute `HiMyWordsToggle` command again. By repeating the command twice
+                       it is possible to cycles throguh available highlight colors.
  * `HiMyWordsClear` - clear all highlights.
 
 ## 📦 Installation

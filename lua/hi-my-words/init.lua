@@ -50,20 +50,11 @@ local HL_grps = {
   },
 }
 
-local function setHLGroups()
+local function set_hl_groups()
   for i = 1, #HL_grps do
     api.nvim_set_hl(0, HL_grps[i][1], HL_grps[i][2]) -- ns_id = 0, i.e. globally
   end
 end
-
--- Some color-schemes clear highlights. Updates the plugin's highlights if a color-scheme was loaded.
-vim.api.nvim_create_autocmd("ColorScheme", {
-  desc = "Re-apply HiMyWords highlights after changing color-schemes",
-  group = vim.api.nvim_create_augroup("HiMyWordsHiReload", { clear = true }),
-  callback = function()
-    setHLGroups()
-  end,
-})
 
 local Current_hl_grp = 1
 
@@ -73,6 +64,7 @@ local Current_hl_grp = 1
 local function next_hl_grp()
   local last_hl_grp = Current_hl_grp
   Current_hl_grp = Current_hl_grp + 1
+  -- overflow - cycle
   if Current_hl_grp > #HL_grps then
     Current_hl_grp = 1
   end
@@ -94,7 +86,7 @@ end
 local function wreg_register(w, new_m_id, hl_grp)
   local m_id = Words_register[w]
   if m_id ~= nil then
-    print("HiMyWords: BUG: word already registered")
+    vim.notify("HiMyWords: BUG: word already registered", vim.log.levels.ERROR)
   end
   Words_register[w] = new_m_id
   Words_hlgrps[w] = hl_grp
@@ -182,7 +174,7 @@ local function highlight_word_under_cursor()
   local line = api.nvim_buf_get_lines(0, r - 1, r, true)[1]
   local ws, w = get_word(line, c + 1)
   if ws == 0 then
-    print("HiMyWords: no word found under cursor")
+    vim.notify("HiMyWords: no word found under cursor", vim.log.levels.INFO)
     return
   end
   local m_id = wreg_is_registered(w)
@@ -212,14 +204,6 @@ local function clear_all_highlights()
   end
 end
 
-vim.api.nvim_create_user_command("HiMyWordsToggle", function()
-  highlight_word_under_cursor()
-end, { desc = "Highlight/unhighlight the word under cursor" })
-
-vim.api.nvim_create_user_command("HiMyWordsClear", function()
-  clear_all_highlights()
-end, { desc = "Clear all highlights" })
-
 -- TODO
 -- vim.fn.getmatches() to store and vim.fn.setmatches() to restore
 
@@ -229,21 +213,38 @@ function M.setup(opts)
       HL_grps = opts.hl_grps
     end
   end
+  set_hl_groups()
+
+  vim.api.nvim_create_user_command("HiMyWordsToggle", function()
+    highlight_word_under_cursor()
+  end, { desc = "Highlight/unhighlight the word under cursor" })
+
+  vim.api.nvim_create_user_command("HiMyWordsClear", function()
+    clear_all_highlights()
+  end, { desc = "Clear all highlights" })
+
+  -- Some color-schemes clear highlights. Updates the plugin's highlights if a color-scheme was loaded.
+  vim.api.nvim_create_autocmd("ColorScheme", {
+    desc = "Re-apply HiMyWords highlights after changing color-schemes",
+    group = vim.api.nvim_create_augroup("HiMyWordsHiReload", { clear = true }),
+    callback = function()
+      set_hl_groups()
+    end,
+  })
+
+  -- Highlights new windows
+  vim.api.nvim_create_autocmd("WinNew", {
+    desc = "HiMyWords highlights all registered words",
+    group = vim.api.nvim_create_augroup("HiMyWordsHiRegitstered", { clear = true }),
+    callback = function()
+      for w, hl_grp in pairs(Words_hlgrps) do
+        local m_id = Words_register[w]
+        vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, m_id)
+      end
+    end,
+  })
 end
 
--- TODO: move to setup()
-setHLGroups()
-
--- Highlights new windows
-vim.api.nvim_create_autocmd("WinNew", {
-  desc = "HiMyWords highlights all registered words",
-  group = vim.api.nvim_create_augroup("HiMyWordsHiRegitstered", { clear = true }),
-  callback = function()
-    for w, hl_grp in pairs(Words_hlgrps) do
-      local m_id = Words_register[w]
-      vim.fn.matchadd(hl_grp, "\\<" .. w .. "\\>", 10, m_id)
-    end
-  end,
-})
+M.setup()
 
 return M
