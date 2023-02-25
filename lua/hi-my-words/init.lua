@@ -5,54 +5,17 @@ local M = {}
 
 local api = vim.api
 
--- Highlight groups
--- source: https://webflow.com/blog/best-color-combinations
-local HL_grps = {
-  {
-    "HiMyWordsHLG0",
-    { ctermfg = 130, ctermbg = 21, fg = "#eea47f", bg = "#00539c", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG1",
-    { ctermfg = 0, ctermbg = 11, fg = "#101820", bg = "#fee715", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG2",
-    { ctermfg = 0, ctermbg = 11, fg = "#ccf381", bg = "#4831d4", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG3",
-    { ctermfg = 0, ctermbg = 11, fg = "#e2d1f9", bg = "#317773", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG4",
-    { ctermfg = 15, ctermbg = 1, fg = "#ffffff", bg = "#8aaae5", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG5",
-    { ctermfg = 15, ctermbg = 1, fg = "#fcf6f5", bg = "#990011", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG6",
-    { ctermfg = 0, ctermbg = 11, fg = "#2f3c7e", bg = "#fbeaeb", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG7",
-    { ctermfg = 0, ctermbg = 11, fg = "#2c5f2d", bg = "#97bc62", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG8",
-    { ctermfg = 0, ctermbg = 11, fg = "#408ec6", bg = "#1e2761", bold = true, italic = true },
-  },
-  {
-    "HiMyWordsHLG9",
-    { ctermfg = 15, ctermbg = 1, fg = "#990011", bg = "#fcf6f5", bold = true, italic = true },
-  },
-}
+-- see default.lua for default settings
 
-local function set_hl_groups()
-  for i = 1, #HL_grps do
-    api.nvim_set_hl(0, HL_grps[i][1], HL_grps[i][2]) -- ns_id = 0, i.e. globally
+local function set_hl_groups(hl_grps)
+  for i = 1, #hl_grps do
+    api.nvim_set_hl(0, hl_grps[i][1], hl_grps[i][2]) -- ns_id = 0, i.e. globally
+  end
+end
+
+local function notify(msg, log_level)
+  if not M.opts.silent then
+    vim.notify(string.format("HiMyWords: %s", msg, log_level))
   end
 end
 
@@ -65,10 +28,10 @@ local function next_hl_grp()
   local last_hl_grp = Current_hl_grp
   Current_hl_grp = Current_hl_grp + 1
   -- overflow - cycle
-  if Current_hl_grp > #HL_grps then
+  if Current_hl_grp > #M.opts.hl_grps then
     Current_hl_grp = 1
   end
-  return HL_grps[last_hl_grp][1] -- return string name of the group
+  return M.opts.hl_grps[last_hl_grp][1] -- return string name of the group
 end
 
 -- Mapping word to hl_grp. key = "word", Value = hl_grp
@@ -174,7 +137,7 @@ local function highlight_word_under_cursor()
   local line = api.nvim_buf_get_lines(0, r - 1, r, true)[1]
   local ws, w = get_word(line, c + 1)
   if ws == 0 then
-    vim.notify("HiMyWords: no word found under cursor", vim.log.levels.INFO)
+    notify("no word found under cursor", vim.log.levels.INFO)
     return
   end
   local m_id = wreg_is_registered(w)
@@ -208,12 +171,10 @@ end
 -- vim.fn.getmatches() to store and vim.fn.setmatches() to restore
 
 function M.setup(opts)
-  if opts ~= nil then
-    if opts.hl_grps ~= nil then
-      HL_grps = opts.hl_grps
-    end
-  end
-  set_hl_groups()
+  -- opts will be extended by the default table
+  M.opts = setmetatable(opts or {}, { __index = require("hi-my-words.defaults") })
+
+  set_hl_groups(M.opts.hl_grps)
 
   vim.api.nvim_create_user_command("HiMyWordsToggle", function()
     highlight_word_under_cursor()
@@ -223,16 +184,17 @@ function M.setup(opts)
     clear_all_highlights()
   end, { desc = "Clear all highlights" })
 
-  -- Some color-schemes clear highlights. Updates the plugin's highlights if a color-scheme was loaded.
+  -- Some color-schemes clear highlights.
+  -- Update the plugin's highlights if a color-scheme was loaded.
   vim.api.nvim_create_autocmd("ColorScheme", {
     desc = "Re-apply HiMyWords highlights after changing color-schemes",
     group = vim.api.nvim_create_augroup("HiMyWordsHiReload", { clear = true }),
     callback = function()
-      set_hl_groups()
+      set_hl_groups(M.opts.hl_grps)
     end,
   })
 
-  -- Highlights new windows
+  -- Highlight words in the new windows
   vim.api.nvim_create_autocmd("WinNew", {
     desc = "HiMyWords highlights all registered words",
     group = vim.api.nvim_create_augroup("HiMyWordsHiRegitstered", { clear = true }),
