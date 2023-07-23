@@ -127,9 +127,7 @@ local function matchdel_all_windows(m_id)
   -- TODO: run in schedule?
   for _, w_id in ipairs(api.nvim_list_wins()) do
     api.nvim_win_call(w_id, function()
-      if api.nvim_win_is_valid(w_id) then
-        vim.fn.matchdelete(m_id)
-      end
+    pcall(vim.fn.matchdelete, m_id)
     end)
   end
 end
